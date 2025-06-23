@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Playlist Manager</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+    h1 { text-align: center; }
+    form { margin-bottom: 20px; }
+    label { display: block; margin-top: 10px; }
+    input[type="text"], select { width: 100%; padding: 6px; }
+    button { margin-top: 10px; padding: 8px 12px; }
+    ul { list-style: none; padding: 0; }
+    li { margin-bottom: 10px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+    .liked { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Playlist Manager</h1>
+
+  <form id="addSongForm">
+    <label>Исполнитель:
+      <input type="text" id="artist" required />
+    </label>
+    <label>Название:
+      <input type="text" id="title" required />
+    </label>
+    <label>Жанр:
+      <input type="text" id="genre" required />
+    </label>
+    <label>Ссылка на обложку:
+      <input type="text" id="cover_url" />
+    </label>
+    <button type="submit">Добавить песню</button>
+  </form>
+
+  <h2>Песни:</h2>
+  <ul id="songsList"></ul>
+
+  <script>
+    const form = document.getElementById("addSongForm");
+    const songsList = document.getElementById("songsList");
+
+    async function fetchSongs() {
+      const res = await fetch('/songs?limit=20');
+      const songs = await res.json();
+      songsList.innerHTML = '';
+      songs.forEach(song => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <strong>${song.artist}</strong> — ${song.title} (${song.genre})
+          ${song.liked ? '<span class="liked">[♥]</span>' : ''}
+          <br />
+          <img src="${song.cover_url || ''}" alt="Cover" width="100" style="margin-top:5px;"/>
+          <br />
+          <button onclick="likeSong(${song.id})">♥ Like</button>
+          <button onclick="deleteSong(${song.id})">🗑 Delete</button>
+        `;
+        songsList.appendChild(li);
+      });
+    }
+
+    async function likeSong(id) {
+      const res = await fetch(`/songs/${id}/like`, { method: 'PATCH' });
+      if (res.ok) fetchSongs();
+      else alert('Ошибка при лайке');
+    }
+
+    async function deleteSong(id) {
+      const res = await fetch(`/songs/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchSongs();
+      else alert('Ошибка при удалении');
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const newSong = {
+        artist: form.artist.value,
+        title: form.title.value,
+        genre: form.genre.value,
+        cover_url: form.cover_url.value,
+        liked: false
+      };
+      const res = await fetch('/songs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSong)
+      });
+      if (res.ok) {
+        form.reset();
+        fetchSongs();
+      } else {
+        alert('Ошибка при добавлении песни');
+      }
+    };
+
+    fetchSongs();
+  </script>
+</body>
+</html>
